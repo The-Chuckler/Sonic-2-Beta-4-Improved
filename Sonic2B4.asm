@@ -17,7 +17,7 @@
   include "Constants.asm"
 
 ; ASSEMBLY OPTIONS:
-skipChecksumCheck = 0
+skipChecksumCheck = 1;0
 ;	| If 1, disables the unnecessary (and slow) bootup checksum calculation
 ;
 
@@ -177,18 +177,20 @@ ClearRemainingRAMLoop:
 		move.b	#0,(Game_Mode).w
 MainGameLoop: 
 		move.b	(Game_Mode).w,d0
-		and.w	#$1C,d0
+		and.w	#$3C,d0;#$1C,d0
 		jsr	GameModeArray(pc,d0) 
 		bra.s	MainGameLoop 
 GameModeArray: 
-		bra.w	SegaScreen
-		bra.w	TitleScreen 
-		bra.w	Level 
-		bra.w	Level 
-		bra.w	SpecialStage 
-		bra.w	Continue 
-		bra.w	Go_Versus_Mode_Results 
-		bra.w	Go_Versus_Mode_Menu 
+		bra.w	SegaScreen;0
+		bra.w	TitleScreen ;4
+		bra.w	Level ;8
+		bra.w	Level ;$C
+		bra.w	SpecialStage ;$10
+		bra.w	Continue ;$C;$14
+		bra.w	Go_Versus_Mode_Results ;$E;$18
+		bra.w	Go_Versus_Mode_Menu ;$1C
+		bra.w	Go_Level_Select_Menu;$20
+		even
     if skipChecksumCheck=0
 ;===============================================================================
 ; ChecksumError
@@ -352,6 +354,9 @@ Go_Versus_Mode_Menu:
 		jmp	Versus_Mode_Menu 
 Go_Versus_Mode_Results: 
 		jmp	Versus_Mode_Results 
+Go_Level_Select_Menu:
+;		rts
+		jmp	Versus_Mode_Menu 
 ;===============================================================================
 ; Sub Routine HBlank
 ; [ Begin ]
@@ -3526,6 +3531,13 @@ loc_3E14:
 ; [ End ]
 ;=============================================================================== 
 		cnop	0,4 ; Filler 
+locVRAM:	macro loc,controlport
+;		if ("controlport"=="")
+		move.l	#($40000000+(((loc)&$3FFF)<<16)+(((loc)&$C000)>>14)),(VDP_control_port).l
+;		else
+;		move.l	#($40000000+(((loc)&$3FFF)<<16)+(((loc)&$C000)>>14)),controlport
+;		endif
+		endm
 ;===============================================================================
 ; Title Screen
 ; [ Begin ]
@@ -3571,6 +3583,10 @@ loc_3E88:
 loc_3E98: 
 		move.l	d0,(a1)+
 		dbra	d1,loc_3E98
+		;move.l	#$54C00000,(VDP_control_port).l
+		locVRAM	$6000
+		lea	(Nem_CreditText).l,a0 ;	load alphabet
+		bsr.w	NemesisDec
 		lea	($FFFFFB80).w,a1
 		moveq	#0,d0
 		move.w	#$1F,d1
@@ -3579,6 +3595,9 @@ loc_3EA8:
 		dbra	d1,loc_3EA8
 		moveq	#3,d0 ; Load Sonic Palette "Sonic Team Presents" Left Over
 		bsr.w	PalLoad1 
+		move.b	#$8A,($FFFFB080).w ; load "SONIC TEAM PRESENTS"	object
+		jsr	Load_Objects 
+		jsr	Build_Sprites 
 		bsr.w	Pal_FadeTo 
 		move	#$2700,sr
 		move.l	#$40000000,(VDP_control_port)
@@ -3597,7 +3616,7 @@ loc_3EA8:
 loc_3F10: 
 		move.w	(a5)+,(a6)
 		dbra	d1,loc_3F10
-		nop
+;		nop
 		move.b	#0,($FFFFFE30).w
 		move.b	#0,($FFFFFEE0).w
 		move.w	#0,(Debug_placement_mode).w
@@ -3677,10 +3696,10 @@ TitleScreen_Loop:
 		bsr.w	Bg_Scroll_Title_Screen 
 		jsr	Build_Sprites 
 		bsr.w	RunPLC 
-		tst.b	(Graphics_Flags).w
-		bpl.s	Code_Sequence_J 
-		lea	(Level_Select_Code_J),a0 
-		bra.s	Level_Select_Cheat_Test 
+;		tst.b	(Graphics_Flags).w
+;		bpl.s	Code_Sequence_J 
+;		lea	(Level_Select_Code_J),a0 
+;		bra.s	Level_Select_Cheat_Test 
 Code_Sequence_J: 
 		lea	(Level_Select_Code_US),a0 
 Level_Select_Cheat_Test: 
@@ -3752,6 +3771,8 @@ LevelSelect_ClearVRAM:
 		dbra	d1,LevelSelect_ClearVRAM 
 		bsr.w	loc_4430
 LevelSelect_Loop: 
+		move.b	#$1C+$4,(Game_Mode).w
+		rts
 		move.b	#4,(Delay_Time).w
 		bsr.w	DelayProgram 
 		bsr.w	LevelSelect_Controls 
@@ -3794,7 +3815,7 @@ Level_Select_Array:
 		dc.w	$0,$1 ; GHz
 		dc.w	$400,$401,$500 ; Mz
 		dc.w	$700,$701 ; HTz
-		dc.w	$FFFF,$FFFF ; HPz - Disabled
+		dc.w	$800,$801 ; HPz - Disabled
 		dc.w	$A00,$A01 ; OOz
 		dc.w	$B00,$B01 ; DHz 
 		dc.w	$C00,$C01 ; CNz
@@ -3837,8 +3858,8 @@ loc_42A2:
 ;--------------------------------------------------------------------------------
 Level_Select_Code_US:
 		dc.b	$1,$2,$2,$2,$2,$1,$0,$FF
-Level_Select_Code_J: 
-		dc.b	$1,$2,$2,$2,$2,$1,$0,$FF
+;Level_Select_Code_J: 
+;		dc.b	$1,$2,$2,$2,$2,$1,$0,$FF
 loc_42B4:
 		move.w	#$1E,(Demo_Time_left).w
 loc_42BA: 
@@ -8980,7 +9001,7 @@ Map_Stage:
 		dc.b	$4,__S,__T,__A,__G,__E
 Map_Game_Over: 
 		dc.b	$8,__G,__A,__M,__E,___,__O,__V,__E,__R
-; Map_Time_Over 
+Map_Time_Over:
 		dc.b	$8,__T,__I,__M,__E,___,__O,__V,__E,__R
 Map_No_Game: 
 		dc.b	$6,__N,__O,___,__G,__A,__M,__E
@@ -9034,6 +9055,7 @@ J_Dynamic_Normal:
 ; [ Begin ]
 ;=============================================================================== 
 Versus_Mode_Menu: 
+MenuScreen:
 		bsr.w	Pal_FadeFrom 
 		move	#$2700,sr
 		move.w	(VDP_Reg0_Val).w,d0
@@ -9079,6 +9101,9 @@ loc_96BE:
 		moveq	#$27,d1
 		moveq	#$1B,d2
 		bsr.w	loc_9EB4
+		;here comes level select check
+		cmpi.b	#$20,(Game_Mode).w	; level select menu?
+		beq.w	J_MenuScreen_LevelSelect	; if yes, branch
 		lea	(RAM_Start),a1
 		lea	(loc_9BD8),a0
 		move.w	#$60,d0
@@ -9167,6 +9192,8 @@ loc_985E:
 		move.b	#0,($FFFFFE30).w
 		move.b	#0,($FFFFFEE0).w
 		rts
+J_MenuScreen_LevelSelect:
+	jmp	MenuScreen_LevelSelect
 ;--------------------------------------------------------------------------------
 loc_988A:
 		moveq	#0,d0
@@ -9300,6 +9327,7 @@ loc_9A0E:
 		dbra	d1,loc_9A0E
 		rts
 ;--------------------------------------------------------------------------------
+;		include	"LevelSelect.asm"
 ;-------------------------------------------------------------------------------
 Pal_Levels_Icons: 
 		incbin 'palettes/lvsicons.pal'
@@ -9736,19 +9764,95 @@ Bg_Scroll_Index:
 		dc.w	Bg_Scroll_DEz-Bg_Scroll_Index 
 		dc.w	Bg_Scroll_NGHz-Bg_Scroll_Index 
 		dc.w	Bg_Scroll_SCz-Bg_Scroll_Index 
+;bytesToLcnt function n,n>>2-1
 Bg_Scroll_Title_Screen 
 		move.w	($FFFFEE0C).w,($FFFFF618).w
-		move.w	($FFFFEE00).w,d0
-		cmp.w	#$1C00,d0
-		bcc.s	loc_A434
-		addq.w	#8,d0
-loc_A434:
-		move.w	d0,($FFFFEE00).w
-		lea	($FFFFE000).w,a1
+		addq.w	#1,($FFFFEE00).w
 		move.w	($FFFFEE00).w,d2
 		neg.w	d2
+		asr.w	#2,d2
+		lea	($FFFFE000).w,a1
 		moveq	#0,d0
-		bra.s	loc_A462 
+		move.w	#$9F,d1	; 'Ÿ'
+
+loc_C53A:				; CODE XREF: ROM:0000C53Cj
+		move.l	d0,(a1)+
+		dbf	d1,loc_C53A
+		move.w	d2,d0
+		move.w	#$1F,d1
+
+loc_C546:				; CODE XREF: ROM:0000C548j
+		move.l	d0,(a1)+
+		dbf	d1,loc_C546
+		move.w	d0,d3
+		move.b	($FFFFFE0F).w,d1
+		andi.w	#7,d1
+		bne.s	loc_C55C
+		subq.w	#1,($FFFFA800).w
+
+loc_C55C:				; CODE XREF: ROM:0000C556j
+		move.w	($FFFFA800).w,d1
+		andi.w	#$1F,d1
+		lea	(Bg_Scroll_Data)(pc),a2
+		lea	(a2,d1.w),a2
+		move.w	#$F,d1
+
+loc_C570:				; CODE XREF: ROM:0000C578j
+		move.b	(a2)+,d0
+		ext.w	d0
+		add.w	d3,d0
+		move.l	d0,(a1)+
+		dbf	d1,loc_C570
+		rts	
+;	move.w	($FFFFEE0C).w,($FFFFF618).w
+;	addq.w	#1,(Camera_X_pos).w
+;	move.w	(Camera_X_pos).w,d2
+;	neg.w	d2
+;	asr.w	#2,d2
+;	lea	(Horiz_Scroll_Buf).w,a1
+;	moveq	#0,d0
+;	move.w	#$280,d1
+;CHangingtheminus1:
+;	move.l	d0,(a1)+
+;	dbf	d1,CHangingtheminus1
+;
+;	move.w	d2,d0
+;	move.w	#$80,d1
+;CHangingtheminus2:
+;	move.l	d0,(a1)+
+;	dbf	d1,CHangingtheminus2
+;
+;	move.w	d0,d3
+;	move.b	($FFFFFE0F).w,d1
+;	andi.w	#7,d1
+;	bne.s	CHangingtheminus3
+;	subq.w	#1,($FFFFA800).w
+;CHangingtheminus3:
+;	move.w	($FFFFA800).w,d1
+;	andi.w	#$1F,d1
+;	lea	Bg_Scroll_Data(pc),a2
+;	lea	(a2,d1.w),a2
+;	move.w	#$40,d1
+;CHangingtheminus4:
+;	move.b	(a2)+,d0
+;	ext.w	d0
+;	add.w	d3,d0
+;	move.l	d0,(a1)+
+;	dbf	d1,CHangingtheminus4
+;
+;	rts
+;		move.w	($FFFFEE0C).w,($FFFFF618).w
+;		move.w	($FFFFEE00).w,d0
+;		cmp.w	#$1C00,d0
+;		bcc.s	loc_A434
+;		addq.w	#8,d0
+;loc_A434:
+;		move.w	d0,($FFFFEE00).w
+;		lea	($FFFFE000).w,a1
+;		move.w	($FFFFEE00).w,d2
+;		neg.w	d2
+;		moveq	#0,d0
+;		bra.s	loc_A462 
 ;===============================================================================
 ; Sub Routine Green Hill Background Scroll 
 ; [ Begin ]
@@ -36864,4 +36968,10 @@ Sfx_F0:
 ; [ End ]
 ;=============================================================================== 
 		
-		 
+Nem_CreditText:	incbin	"artnem\credits.bin"	; credits alphabet
+		even
+		include	"LevelSelect.asm"
+MapEng_LevSel:	incbin "mapeni/Level Select.bin"
+		even
+;MapEng_LevSelIcon:	incbin "mapeni/Level Select Icons.bin"
+;		even

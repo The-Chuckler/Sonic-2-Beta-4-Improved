@@ -64,16 +64,16 @@ Sonic_Control:
 ; Remove Comments to Enable Debug Mode	Esrael L. G. Neto
 ; [ Begin ]
 ;------------------------------------------------------------------------------- 
-;	tst.w	($FFFFFFFA).w
-;	beq.s	No_Debug_Mode
-;	btst	#4,($FFFFF605).w
-;	beq.s	No_Debug_Mode
-;	move.w	#1,($FFFFFE08).w
-;	clr.b	($FFFFF7CC).w
-;	rts
+	tst.w	($FFFFFFFA).w
+	beq.s	No_Debug_Mode
+	btst	#4,($FFFFF605).w
+	beq.s	No_Debug_Mode
+	move.w	#1,($FFFFFE08).w
+	clr.b	($FFFFF7CC).w
+	rts
 ;--------------------------------------------------------------------------------
 
-;No_Debug_Mode:	
+No_Debug_Mode:	
 ;-------------------------------------------------------------------------------
 ; Remove Comments to Enable Debug Mode	Esrael L. G. Neto
 ; [ Begin ]

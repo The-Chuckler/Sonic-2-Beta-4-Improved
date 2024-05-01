@@ -186,7 +186,7 @@ GameModeArray:
 		bra.w	Level ;8
 		bra.w	Level ;$C
 		bra.w	SpecialStage ;$10
-		bra.w	Continue ;$C;$14
+		bra.w	J_Continue ;$C;$14
 		bra.w	Go_Versus_Mode_Results ;$E;$18
 		bra.w	Go_Versus_Mode_Menu ;$1C
 		bra.w	Go_Level_Select_Menu;$20
@@ -357,6 +357,8 @@ Go_Versus_Mode_Results:
 Go_Level_Select_Menu:
 ;		rts
 		jmp	Versus_Mode_Menu 
+J_Continue:
+	jmp	Continue
 ;===============================================================================
 ; Sub Routine HBlank
 ; [ Begin ]
@@ -3107,7 +3109,7 @@ loc_2B9E:
  
 PalPointers: 
 		dc.l	Pal_Sega_Bg,$FB00001F ; $0 Sega Logo -> loc_2CE6
-		dc.l	Pal_Title_Screen,$FB00001F ; $1 Title Screen -> loc_2D66
+		dc.l	Pal_Title_Screen,$FB200007 ; $1 Title Screen -> loc_2D66
 		dc.l	Pal_Level_Select_Menu,$FB00001F ; $2 Level Select Menu -> loc_2DE6
 		dc.l	Pal_Sonic_And_Miles,$FB00000F ; $3 Sonic & Miles -> loc_2E66
 		dc.l	Pal_GHz,$FB200017 ; $4 Green Hill -> loc_2EA6
@@ -3149,7 +3151,7 @@ PalPointers:
 Pal_Sega_Bg: 
 		incbin 'palettes/sega_bg.pal' 
 Pal_Title_Screen:
-		incbin 'palettes/titscreen.pal'
+		incbin 'palettes/title screen.bin';titscreen.pal'
 Pal_Level_Select_Menu: 
 		incbin 'palettes/lvslmenu.pal'
 Pal_Sonic_And_Miles 
@@ -3584,38 +3586,49 @@ loc_3E98:
 		move.l	d0,(a1)+
 		dbra	d1,loc_3E98
 		;move.l	#$54C00000,(VDP_control_port).l
-		locVRAM	$6000
+		move.l	#$60000002,(VDP_control_port).l;locVRAM	$6000
 		lea	(Nem_CreditText).l,a0 ;	load alphabet
 		bsr.w	NemesisDec
-		lea	($FFFFFB80).w,a1
+		lea	(off_B2B0).l,a1
+	jsr	(loc_B272).l
+		lea	($FFFFFB80).w,a1;clears secondary palette
 		moveq	#0,d0
 		move.w	#$1F,d1
 loc_3EA8: 
 		move.l	d0,(a1)+
-		dbra	d1,loc_3EA8
+		dbra	d1,loc_3EA8;till here
 		moveq	#3,d0 ; Load Sonic Palette "Sonic Team Presents" Left Over
 		bsr.w	PalLoad1 
-		move.b	#$8A,($FFFFB080).w ; load "SONIC TEAM PRESENTS"	object
-		jsr	Load_Objects 
-		jsr	Build_Sprites 
+;		move.b	#$8A,($FFFFB080).w ; load "SONIC TEAM PRESENTS"	object
+;		jsr	Load_Objects 
+;		jsr	Build_Sprites 
 		bsr.w	Pal_FadeTo 
 		move	#$2700,sr
 		move.l	#$40000000,(VDP_control_port)
 		lea	(Title_Screen_Bg_Wings),a0 
 		bsr.w	NemesisDec 
-		move.l	#$40000001,(VDP_control_port)
-		lea	(Title_Screen_Sonic_Miles),a0 
-		bsr.w	NemesisDec 
-		move.l	#$5E000001,(VDP_control_port)
+		move.l	#$6A000000,(VDP_control_port).l
+		lea	(Title_Screen_Sonic_Miles).l,a0;(MapEng_TitleSprites).l,a0
+		bsr.w	NemesisDec
+		move.l	#$7E400001,(VDP_control_port).l
+		lea	(ArtNem_MenuJunk).l,a0
+		bsr.w	NemesisDec
+;		move.l	#$40000001,(VDP_control_port)
+;		lea	(Title_Screen_Sonic_Miles),a0 
+;		bsr.w	NemesisDec 
+		move.l	#$40400002,(VDP_control_port).l;move.l	#$5E000001,(VDP_control_port)
 		lea	(_1p2pVs_Spr),a0 
 		bsr.w	NemesisDec 
-		lea	(VDP_data_port),a6
-		move.l	#$50000003,4(a6)
-		lea	(art_Menu_Text),a5 
-		move.w	#$28F,d1
-loc_3F10: 
-		move.w	(a5)+,(a6)
-		dbra	d1,loc_3F10
+		move.l	#$50000003,(VDP_control_port).l
+	lea	(ArtNem_FontStuff).l,a0
+	bsr.w	NemesisDec
+;		lea	(VDP_data_port),a6
+;		move.l	#$50000003,4(a6)
+;		lea	(art_Menu_Text),a5 
+;		move.w	#$28F,d1
+;loc_3F10: 
+;		move.w	(a5)+,(a6)
+;		dbra	d1,loc_3F10
 ;		nop
 		move.b	#0,($FFFFFE30).w
 		move.b	#0,($FFFFFEE0).w
@@ -3627,49 +3640,60 @@ loc_3F10:
 		bsr.w	Pal_FadeFrom 
 		move	#$2700,sr
 		lea	(RAM_Start),a1
-		lea	(TS_Wings_Sonic_Mappings),a0 
-		move.w	#0,d0
+		lea	(MapEng_TitleScreen).l,a0;(TS_Wings_Sonic_Mappings),a0 
+		move.w	#$4000,d0;move.w	#0,d0
 		bsr.w	EnigmaDec 
 		lea	(RAM_Start),a1
-		move.l	#$40000003,d0
+		move.l	#$60000003,d0
 		moveq	#$27,d1
 		moveq	#$1B,d2
 		bsr.w	ShowVDPGraphics 
 		lea	(RAM_Start),a1
-		lea	(Title_Screen_Bg_Mappings),a0 
-		move.w	#0,d0
+		lea	(MapEng_TitleBack).l,a0;(Title_Screen_Bg_Mappings),a0 
+		move.w	#$4000,d0;#0,d0
 		bsr.w	EnigmaDec 
 		lea	(RAM_Start),a1
-		move.l	#$60000003,d0
-		moveq	#$1F,d1
+		move.l	#$60500003,d0
+		moveq	#$17,d1
 		moveq	#$1B,d2
 		bsr.w	ShowVDPGraphics 
 		lea	(RAM_Start),a1
-		lea	(Title_Screen_R_Bg_Mappings),a0 
-		move.w	#0,d0
+		lea	(MapEng_TitleLogo).l,a0;(Title_Screen_R_Bg_Mappings),a0 
+		move.w	#$E000,d0
 		bsr.w	EnigmaDec 
+		lea	($FFFF0858).l,a1
+	lea	(CopyrightText).l,a2
+	moveq	#$A,d6
+.Moinsisfrench:	move.w	(a2)+,(a1)+	; load mappings for copyright 1992 sega message
+	dbf	d6,.Moinsisfrench;-
 		lea	(RAM_Start),a1
-		move.l	#$60400003,d0
-		moveq	#$1F,d1
+		move.l	#$40000003,d0;#$60400003,d0
+		moveq	#$27,d1
 		moveq	#$1B,d2
 		bsr.w	ShowVDPGraphics 
-		moveq	#1,d0
-		bsr.w	PalLoad1 
-		move.b	#$99,d0
-		bsr.w	Play_Music 
-		move.b	#0,($FFFFFFFA).w
-		move.w	#0,($FFFFFFD8).w
-		move.w	#$178,(Demo_Time_left).w
 		lea	($FFFFB080).w,a1
 		moveq	#0,d0
-		move.w	#$F,d1
+		move.w	#$F,d1;F,d1
 loc_3FEC: 
 		move.l	d0,(a1)+
 		dbra	d1,loc_3FEC
+		moveq	#1,d0
+		bsr.w	PalLoad1 
+;		move.b	#$99,d0
+;		bsr.w	Play_Music 
+		move.b	#0,($FFFFFFFA).w
+		move.w	#0,($FFFFFFD8).w
+		move.w	#$280,(Demo_Time_left).w
+;		lea	($FFFFB080).w,a1
+;		moveq	#0,d0
+;		move.w	#$F,d1
+;loc_3FEC: 
+;		move.l	d0,(a1)+
+;		dbra	d1,loc_3FEC
 		move.b	#$E,($FFFFB040).w
-		move.b	#$E,($FFFFB080).w
-		move.b	#1,($FFFFB09A).w
-		move.b	#$F,($FFFFB0C0).w
+		move.b	#2,($FFFFB040+subtype).w;move.b	#$E,($FFFFB080).w
+;		move.b	#1,($FFFFB09A).w
+;		move.b	#$F,($FFFFB0C0).w
 		jsr	Load_Objects 
 		jsr	Build_Sprites 
 		moveq	#0,d0
@@ -3685,7 +3709,9 @@ loc_3FEC:
 loc_4046: 
 		move.w	#$FFFF,(a1)+
 		dbra	d0,loc_4046
-		move.w	(VDP_Reg0_Val).w,d0
+		move.w	#-$280,(Camera_X_pos).w
+		move.w	($FFFFF60C).w,d0
+;		move.w	(VDP_Reg0_Val).w,d0
 		or.b	#$40,d0
 		move.w	d0,(VDP_control_port)
 		bsr.w	Pal_FadeTo 
@@ -3695,6 +3721,15 @@ TitleScreen_Loop:
 		jsr	Load_Objects 
 		bsr.w	Bg_Scroll_Title_Screen 
 		jsr	Build_Sprites 
+		lea	(Sprite_Table+4).w,a1
+	moveq	#0,d0
+	moveq	#$4F,d6
+.MinusWorld:	tst.w	(a1)
+	bne.s	.PositiveCHarge;+
+	bchg	#2,d0
+	move.w	d0,2(a1)
+.PositiveCHarge:	addq.w	#8,a1
+	dbf	d6,.MinusWorld;-
 		bsr.w	RunPLC 
 ;		tst.b	(Graphics_Flags).w
 ;		bpl.s	Code_Sequence_J 
@@ -3751,6 +3786,8 @@ loc_410A:
 		beq	PlayLevel 
 		cmp.b	#$C0,(Ctrl_1_Held).w
 		bne.w	PlayLevel 
+		move.b	#$1C+$4,(Game_Mode).w
+		rts
 		move.b	#$91,d0
 		bsr.w	Play_Music 
 		moveq	#2,d0
@@ -4194,6 +4231,18 @@ Unused_Code_4_Loop:
 ;--------------------------------------------------------------------------------
 _1p2pVs_Spr: 
 		incbin 'artnem/1p2pVs.nem'
+CopyrightText:
+	dc.w  $68B	; (C)
+	dc.w	 0	;
+	dc.w  $681	; 1
+	dc.w  $689	; 9
+	dc.w  $689	; 9
+	dc.w  $682	; 2
+	dc.w	 0	;
+	dc.w  $6A0	; S
+	dc.w  $692	; E
+	dc.w  $694	; G
+	dc.w  $68E	; A
 ;===============================================================================
 ; Title Screen
 ; [ End ]
@@ -9178,7 +9227,7 @@ loc_984C:
 		bsr.w	loc_994A
 		bmi.s	loc_985E
 		move.w	#$ED,d0
-		bsr.w	Play_Sfx
+		bsr.w	J_Play_Sfx
 		bra.w	loc_9812
 loc_985E:
 		moveq	#0,d0
@@ -15143,8 +15192,6 @@ loc_109CA:
 ; [ End ]
 ;=============================================================================== 
 
-Obj_0x0E_Sonic_Miles
-		include 'objects/obj_0x0E.asm'
 Obj_0x0F_1Player2Vs: 
 		include 'objects/obj_0x0F.asm'
 ;------------------------------------------------------------------------------- 
@@ -15163,20 +15210,21 @@ loc_10ADA:
 		dc.b	$1F,$0,$1,$FF
 ;------------------------------------------------------------------------------- 
 _1Player2Vs_Mappings: 
-		dc.w	loc_10AE2-_1Player2Vs_Mappings
-		dc.w	loc_10B1C-_1Player2Vs_Mappings
-loc_10AE2:
-		dc.w	$7
-		dc.l	$F4000000,$FFD4,$F40C0001,$FFE4
-		dc.l	$F4040005,$20004,$4002007,$2003FFD4
-		dc.l	$40C2001,$2000FFE4,$4042005,$20020004
-		dc.l	$4042008,$2004001C
-loc_10B1C:
-		dc.w	$7
-		dc.l	$F4002000,$2000FFD4,$F40C2001,$2000FFE4
-		dc.l	$F4042005,$20020004,$4000007,$3FFD4
-		dc.l	$40C0001,$FFE4,$4040005,$20004
-		dc.l	$4040008,$4001C 
+	incbin	"misc/obj0F.bin"
+;		dc.w	loc_10AE2-_1Player2Vs_Mappings
+;		dc.w	loc_10B1C-_1Player2Vs_Mappings
+;loc_10AE2:
+;		dc.w	$7
+;		dc.l	$F4000000,$FFD4,$F40C0001,$FFE4
+;		dc.l	$F4040005,$20004,$4002007,$2003FFD4
+;		dc.l	$40C2001,$2000FFE4,$4042005,$20020004
+;		dc.l	$4042008,$2004001C
+;loc_10B1C:
+;		dc.w	$7
+;		dc.l	$F4002000,$2000FFD4,$F40C2001,$2000FFE4
+;		dc.l	$F4042005,$20020004,$4000007,$3FFD4
+;		dc.l	$40C0001,$FFE4,$4040005,$20004
+;		dc.l	$4040008,$4001C 
 		
 Sonic_Miles_Mappings: 
 		dc.w	Sonic_In_Title_Screen_Map-Sonic_Miles_Mappings 
@@ -16176,7 +16224,7 @@ Object_List:
 		dc.l	Obj_0xC6_Robotnik_Running 
 		dc.l	Obj_0xC7_DEz_Final_Boss 
 		dc.l	Obj_0xC8_Crawl 
-		dc.l	Obj_Null 
+		dc.l	ObjC9;Obj_Null 
 		dc.l	Obj_Null 
 		dc.l	Obj_Null 
 		dc.l	Obj_Null 
@@ -16366,6 +16414,7 @@ loc_12E24:
 DeleteObject: 
 		move.l	a0,a1
 Delete_A1_Object: 
+DeleteObject2:
 		moveq	#0,d1
 		moveq	#$F,d0
 loc_12E2E: 
@@ -35612,16 +35661,13 @@ Sega_Blocks_Spr:
 		incbin 'artnem/sega_blk.nem'
 Sega_Mappings: 
 		incbin 'mapeni/sega.eni'
-TS_Wings_Sonic_Mappings: 
-		incbin 'mapeni/titlescr.eni'
-Title_Screen_Bg_Mappings: 
-		incbin 'mapeni/titscrbg.eni'
-Title_Screen_R_Bg_Mappings: 
-		incbin 'mapeni/titscrb2.eni'
-Title_Screen_Bg_Wings: 
-		incbin 'artnem/titlescr.nem' ; Title Screen Wings and background
-Title_Screen_Sonic_Miles: 
-		incbin 'artnem/sncmlscr.nem' ; Sonic And Miles in Title Screen
+
+;TS_Wings_Sonic_Mappings: 
+;		incbin 'mapeni/titlescr.eni'
+;Title_Screen_Bg_Mappings: 
+;		incbin 'mapeni/titscrbg.eni'
+;Title_Screen_R_Bg_Mappings: 
+;		incbin 'mapeni/titscrb2.eni'
 FireBall: 
 		incbin 'artnem/fireball.nem'
 GHz_Waterfall: 
@@ -35817,6 +35863,7 @@ Miles_In_Continue:
 Mini_Sonic: 
 		incbin 'artnem/m_sonic.nem' 
 Menu_Font: 
+ArtNem_FontStuff:
 		incbin 'artnem/menufont.nem' 
 Versus_Result_Font: 
 		incbin 'artnem/vsresfnt.nem' 
@@ -36497,8 +36544,8 @@ SCz_2_PB_Rings_Layout:
 ; Rings_Layout
 ; [ End ]
 ;===============================================================================
-Unk_loc_EB400:
-		incbin 'misc/0x0EB400.dat'
+;Unk_loc_EB400:
+;		incbin 'misc/0x0EB400.dat'
 ;===============================================================================
 ; Sound Driver
 ; [ Begin ]
@@ -36968,10 +37015,39 @@ Sfx_F0:
 ; [ End ]
 ;=============================================================================== 
 		
-Nem_CreditText:	incbin	"artnem\credits.bin"	; credits alphabet
+Nem_CreditText:	incbin	"artnem\Credit Text.bin";credits.bin"	; credits alphabet
 		even
 		include	"LevelSelect.asm"
 MapEng_LevSel:	incbin "mapeni/Level Select.bin"
 		even
+MapEng_TitleScreen:	incbin	"mapeni/Mappings for title screen background.bin"
+;--------------------------------------------------------------------------------------
+; Enigma compressed art mappings
+; Mappings for title screen background (smaller part, water/horizon)	; MapEng_74E3A:
+MapEng_TitleBack:	incbin	"mapeni/Mappings for title screen background 2.bin"
+;---------------------------------------------------------------------------------------
+; Enigma compressed art mappings
+; "Sonic the Hedgehog 2" title screen logo mappings	; MapEng_74E86:
+MapEng_TitleLogo:	incbin	"mapeni/Sonic the Hedgehog 2 title screen logo mappings.bin"
+Title_Screen_Bg_Wings: 
+		incbin 'artnem/titlescr.nem' ; Title Screen Wings and background
+MapEng_TitleSprites:
+Title_Screen_Sonic_Miles:	incbin	"artnem/Sonic and Tails from title screen.bin"
+;	include	"objc9.asm"
+Obj_0x0E_Sonic_Miles:
+		include 'objects/obj_0x0E.asm'
+j_2displaysprite:
+	jmp	displaysprite
+j_animatesprite:
+	jmp	animatesprite
+j_2deleteobject:
+	jmp	deleteobject
+j_2deleteobject2:
+j_2j_2deleteobject2:
+	jmp	deleteobject2
+ArtNem_MenuJunk:	incbin	"artnem/A few menu blocks.bin"
+	include	"credit text.asm"
+;Title_Screen_Sonic_Miles: 
+;		incbin 'artnem/sncmlscr.nem' ; Sonic And Miles in Title Screeni
 ;MapEng_LevSelIcon:	incbin "mapeni/Level Select Icons.bin"
 ;		even
